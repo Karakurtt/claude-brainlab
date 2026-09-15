@@ -139,6 +139,22 @@ graphify install --platform claude    # writes ~/.claude/skills/graphify
 this repo -- it must be installed separately or `/graphify` will not exist.
 Install Zotero 7 and Obsidian from their own installers.
 
+### `.env` gained keys after the upstream merge
+
+The old `.env` predates the fork sync and is missing five keys. Carrying it over
+verbatim silently skips two MCP servers:
+
+| Key | Effect if absent |
+|---|---|
+| `LAB_MCP_URL`, `LAB_MCP_TOKEN` | `lab-knowledge` is not registered -- no shared research base |
+| `PLANE_API_KEY`, `PLANE_WORKSPACE_SLUG`, `PLANE_BASE_URL` | `plane` is not registered |
+
+Both are all-or-nothing, and the installer prints a `[skip]` line for each, so
+check the install output rather than assuming. The lab token comes with BRAIn
+Lab team membership -- see the README. Everything else works without them.
+
+Copy the missing keys from `.env.example` and fill what you have.
+
 ### Install the harness
 
 ```powershell
@@ -299,6 +315,32 @@ Two kinds of output are **expected, not drift**:
 Anything else is real: backport it into the repo and commit before reinstalling.
 The 2026-09-15 audit found `obsidian-project-memory/scripts/project_kb.py` 69
 lines ahead of the repo this way.
+
+### Superseded skills the installer will not remove
+
+The upstream merge deliberately retired six components as duplicates, but the
+installer only copies -- it never deletes. So they are **still sitting in
+`~/.claude` on the old laptop** and will keep being offered alongside their
+replacements, which is exactly the confusion the removal was meant to end. A
+fresh install on the new machine simply will not have them, which is the
+correct state.
+
+| Retired | Use instead |
+|---|---|
+| `skills/paper-self-review` | `skills/astar-paper-review` |
+| `agents/rebuttal-writer.md` | `skills/review-response` |
+| `skills/post-acceptance` | `skills/presentation` |
+| `commands/poster.md`, `presentation.md`, `promote.md` | the `presentation` skill directly |
+
+Nothing is lost in capability -- each replacement is the lab-written version
+that supersedes an inherited one. To tidy the old laptop before copying:
+
+```powershell
+$stale = 'skills\paper-self-review','skills\post-acceptance','agents\rebuttal-writer.md',
+         'commands\poster.md','commands\presentation.md','commands\promote.md'
+$stale | ForEach-Object { Join-Path $HOME ".claude\$_" } | Where-Object { Test-Path $_ }
+# review that list, then re-run with: | Remove-Item -Recurse -Force
+```
 
 ---
 

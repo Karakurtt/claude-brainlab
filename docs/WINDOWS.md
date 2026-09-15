@@ -28,9 +28,23 @@ components into `~/.claude`, and registers the MemPalace + Zotero MCP servers.
 | MemPalace | `uv tool install mempalace` | memory MCP (optional) |
 | zotero-mcp | `uv tool install zotero-mcp-server` | Zotero MCP (optional) |
 | Zotero 7 | [zotero.org](https://www.zotero.org/download/) | literature pipeline (optional) |
+| graphify | `uv tool install graphifyy` then `graphify install --platform claude` | `/graphify` (optional, ships its own skill) |
 
 `uv tool install` puts executables into `%USERPROFILE%\.local\bin`
 (`mempalace-mcp.exe`, `zotero-mcp.exe`) — the installer looks for them there.
+
+### Optional shared services
+
+Two more MCP servers are registered when their credentials are present in
+`.env`, and skipped with a printed note when they are not:
+
+| Server | `.env` keys | Notes |
+|---|---|---|
+| `lab-knowledge` | `LAB_MCP_URL`, `LAB_MCP_TOKEN` | HTTP; BRAIn Lab members get the token with team membership |
+| `plane` | `PLANE_API_KEY`, `PLANE_WORKSPACE_SLUG`, optional `PLANE_BASE_URL` | stdio via `uvx`, so uv must be installed |
+
+Both are all-or-nothing: a half-filled credential pair skips the server rather
+than registering one that cannot connect.
 
 ## Where the config actually lives (read this)
 
@@ -91,6 +105,35 @@ app (or start a new session) after running the installer.
   using `mempalace_add_drawer` from Claude — the palace is created on demand.
 - Check health any time: `mempalace status` (drawer/wing counts) or ask
   Claude for `mempalace_status` in a session.
+
+## Known gaps on native Windows
+
+Two things in the repo assume a POSIX shell. Neither blocks the install; both
+are worth knowing before you go looking for a bug that is not there.
+
+**`autoresearch/ar` does not run.** It is a bash launcher that calls `python3`,
+which native Windows does not provide. The package itself is pure Python and
+installs fine — invoke it directly instead:
+
+```powershell
+$env:PYTHONPATH = "$HOME\.claude"
+py -m autoresearch.orchestrator status        # init | migrate | status | select | ...
+```
+
+**`hooks/citation-validator.py` never fires.** It is registered only in
+`hooks/hooks.json`, which uses `${CLAUDE_PLUGIN_ROOT}` — the *plugin* format,
+read when the repo is loaded as a Claude Code plugin. This installer copies
+files into `~/.claude` and renders `settings.json` instead, and nothing in that
+path reads `hooks/hooks.json`. So the hook is inert even though
+`skills/paper-ingest` and `skills/presentation` both describe it as enforcing
+(`the citation-validator.py hook still enforces it`, `хук citation-validator
+заблокирует запись`). This is not Windows-specific — it is inert on macOS and
+Linux too.
+
+To actually enable it, add it to the `PreToolUse` block of
+`settings.json.template` using `${PYTHON_BIN}` (not `python3`, which does not
+resolve on Windows) and reinstall. Do that deliberately: it is a **blocking**
+hook on `Edit|Write|MultiEdit`.
 
 ## Verify the install
 

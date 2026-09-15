@@ -12,7 +12,8 @@
 #      (existing files are backed up to ~/.claude/.claude-brainlab-backups).
 #   3. Expands ${VAR} placeholders and renders settings.json (hooks, statusline).
 #   4. Writes ~/.claude/obsidian-projects.json from your project roots.
-#   5. Registers MemPalace + Zotero MCP servers via `claude mcp add -s user`.
+#   5. Registers MemPalace + Zotero, and lab-knowledge + plane when their
+#      credentials are in .env, via `claude mcp add -s user`.
 #      This writes ~/.claude.json -- the ONLY config both the Claude Code CLI
 #      and the desktop app actually read for MCP servers. (mcpServers inside
 #      ~/.claude/settings.json is ignored by both -- do not put servers there.)
@@ -96,7 +97,7 @@ if (-not $McpOnly) {
     Write-Host "-> Installing claude-brainlab into $ClaudeHome"
     New-Item -ItemType Directory -Force -Path $ClaudeHome | Out-Null
 
-    $components = @('skills', 'commands', 'agents', 'hooks', 'scripts', 'rules')
+    $components = @('skills', 'commands', 'agents', 'hooks', 'scripts', 'rules', 'autoresearch')
     foreach ($c in $components) {
         $src = Join-Path $RepoRoot $c
         $dst = Join-Path $ClaudeHome $c
@@ -182,6 +183,38 @@ if (-not $SkipMcp) {
         if ($LASTEXITCODE -ne 0) { throw 'claude mcp add zotero failed' }
     } else {
         Write-Warning "zotero-mcp.exe not found in $LocalBin. Install it first:  uv tool install zotero-mcp-server"
+    }
+
+    # Shared lab services. settings.json.template carries these for the bash
+    # installer, but that block is stripped on Windows (nothing reads it), so
+    # they have to be registered here. All-or-nothing on credentials, matching
+    # setup.sh: half-configured servers are worse than absent ones.
+    $labUrl   = $DotEnv['LAB_MCP_URL']
+    $labToken = $DotEnv['LAB_MCP_TOKEN']
+    if ($labUrl -and $labToken) {
+        cmd /c "claude mcp remove lab-knowledge -s user >nul 2>&1"
+        claude mcp add --transport http lab-knowledge -s user `
+            --header "Authorization: Bearer $labToken" `
+            $labUrl
+        if ($LASTEXITCODE -ne 0) { throw 'claude mcp add lab-knowledge failed' }
+    } else {
+        Write-Step '[skip] lab-knowledge (set LAB_MCP_URL and LAB_MCP_TOKEN in .env)'
+    }
+
+    $planeKey  = $DotEnv['PLANE_API_KEY']
+    $planeSlug = $DotEnv['PLANE_WORKSPACE_SLUG']
+    $planeBase = $DotEnv['PLANE_BASE_URL']
+    if ($planeKey -and $planeSlug) {
+        if (-not (Get-Command uvx -ErrorAction SilentlyContinue)) {
+            Write-Warning 'uvx not found - plane needs it:  winget install astral-sh.uv'
+        }
+        cmd /c "claude mcp remove plane -s user >nul 2>&1"
+        $planeEnv = @('-e', "PLANE_API_KEY=$planeKey", '-e', "PLANE_WORKSPACE_SLUG=$planeSlug")
+        if ($planeBase) { $planeEnv += @('-e', "PLANE_BASE_URL=$planeBase") }
+        claude mcp add plane -s user @planeEnv '--' uvx plane-mcp-server stdio
+        if ($LASTEXITCODE -ne 0) { throw 'claude mcp add plane failed' }
+    } else {
+        Write-Step '[skip] plane (set PLANE_API_KEY and PLANE_WORKSPACE_SLUG in .env)'
     }
 
     Write-Host ''
