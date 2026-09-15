@@ -100,6 +100,23 @@ Restart Claude Code afterwards. To roll back: `bash install/uninstall.sh`
 
 See the prerequisites table below before installing.
 
+## Moving to a new machine
+
+This repo rebuilds the harness, but not your data — MemPalace drawers,
+per-project memory, the Obsidian vault, SSH keys and the Zotero library all
+live outside it. [`docs/MIGRATION.md`](docs/MIGRATION.md) is the checklist, and
+
+```powershell
+powershell -ExecutionPolicy Bypass -File install\backup-for-migration.ps1 -Destination E:\claude-migration -AuditOnly
+```
+
+collects the laptop-only assets and reports any project with uncommitted work,
+unpushed commits, stashes, or no remote at all. Drop `-AuditOnly` to copy.
+
+One trap is worth knowing before you start: per-project memory is keyed by the
+project's full path, so a new Windows username silently orphans all of it.
+`docs/MIGRATION.md` covers the rename.
+
 ## Customize
 
 Most paths and identifiers are driven by `.env`. To change a hook, skill, or rule, edit it in this repo and re-run `bash install/setup.sh` — your existing `~/.claude` is backed up first. Per-skill customization (Zotero parent keys, vault folder taxonomy, MemPalace wing names) lives in each skill's `SKILL.md`.
