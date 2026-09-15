@@ -24,15 +24,14 @@ The core research loop: get a paper into your library with a real, audited note.
   the PDF, extracts figures/tables from the TeX source, creates a Zotero parent item
   with a PDF child attachment, prevents duplicates, and writes an unusually detailed
   Obsidian note with an 8-section AI Explanation (including Prerequisites) authored by
-  Haiku, ending with a strict BibTeX audit. *Fires on:* an arXiv/AlphaXiv link + "сделай
-  заметку / ingest this paper".
+  Haiku, ending with a strict BibTeX audit. *Fires on:* an arXiv/AlphaXiv link + "ingest this paper".
 - **`want-2-read`** ⭐ — Batch version. Processes a `want_2_read.md` reading queue: one
   fan-out agent per paper, each invoking `paper-ingest`, then a final review agent for
   quality control, and rewrites the queue with final wiki-links, Zotero links, and
   descriptions. *Fires on:* "process my reading list / want-2-read".
 - **`paper-search`** ⭐ — Library-aware arXiv shortlist. Scans for fresh papers on your
   topics and writes a shortlist into the Obsidian literature inbox, skipping anything
-  already ingested. *Fires on:* "найди свежие статьи по теме / scan for new papers".
+  already ingested. *Fires on:* "scan for new papers on this topic".
 - **`zotero-obsidian-bridge`** — Turns papers already in Zotero into detailed reading
   notes inside the bound Obsidian project, checks collection-wide note coverage, and
   builds a connected knowledge map. *Fires on:* "papers are in Zotero, write notes".
@@ -59,10 +58,7 @@ The core research loop: get a paper into your library with a real, audited note.
   hyperparameter search, released code), extracts your own PDF annotations, surfaces a
   weakness skeleton in chat first, then writes one review file per paper in the
   Summary / Strengths-Weaknesses / Questions / Limitations format. Handles prompt
-  injection inside PDFs safely. Venue-agnostic. *Fires on:* "напиши ревью / review this
-  paper" or a handed PDF.
-- **`paper-self-review`** — QA checklist for your own paper before submission:
-  completeness, structure, quality. *Fires on:* "self-review before submission".
+  injection inside PDFs safely. Venue-agnostic. *Fires on:* "review this paper" or a handed PDF.
 - **`review-response`** — Systematic rebuttal workflow: analyze reviewer comments →
   professional response. *Fires on:* "write rebuttal / respond to reviewers".
 - **`research-ideation`** — Research startup: brainstorm ideas, 5W1H, gap analysis,
@@ -91,27 +87,31 @@ The core research loop: get a paper into your library with a real, audited note.
   Russian prose by default, and treats overflow/heavy shrink as errors. Ships a built-in
   **terminal style** (dark, monospace, bright-green accent). *Fires on:* "make slides /
   rewrite this deck / use terminal style".
-- **`post-acceptance`** — Conference-prep workflow after acceptance: Beamer talk, poster,
-  promo content; routes terminal-style requests to the same canonical example as
-  `presentation`. *Fires on:* "prepare conference presentation / make a poster".
 - **`paper-to-social`** ⭐ — Turn a paper into copy-paste-ready social posts (Telegram,
   Twitter/X, Habr), with figures pulled from the arXiv version, in your own voice (never
-  AI-sounding). *Fires on:* "сделай пост по статье / тред по статье / promote this paper".
+  AI-sounding). *Fires on:* "make a post about this paper / promote this paper".
 
 ## E. Obsidian knowledge base & project setup
 
 - **`new-paper`** ⭐ — Track a new idea/paper project in Obsidian (hub card + people
   cards) without creating a filesystem folder. *Fires on:* "new paper / new idea".
 - **`create-project`** ⭐ — Full project setup: `~/Papers/<slug>/` with `.claude/CLAUDE.md`
-  (SSH servers, code paths), Obsidian hub card, people cards, `obsidian-projects.json`
-  registration. *Fires on:* "create project / new project".
-- **`call-notes`** ⭐ — Log meeting/call notes into the project's `Задачи.md`: per-student
-  task assignments, follow-ups, deadlines. *Fires on:* "запиши звонок / задачи после
-  звонка".
+  (SSH servers, code paths), private Obsidian hub, `obsidian-projects.json` registration,
+  and a handoff to shared onboarding for Brain Lab projects. *Fires on:* "create project / new project".
+- **`lab-project-onboarding`** ⭐ — Idempotently create or reuse the Lab Knowledge project,
+  generated Yonote showcase, and private named Kanban, then store only stable links in the
+  private Obsidian hub. *Fires on:* "add this project to the lab / bind it to Brain Lab".
+- **`lab-knowledge`** ⭐ — Run Ask Lab in the local agent: combine permission-scoped research
+  context from Lab Knowledge MCP with shared task state from the bound Yonote Kanban, publish
+  private Obsidian hypotheses only after explicit confirmation, and keep hypotheses,
+  experiments, evidence, decisions, and tasks distinct. *Fires on:* "Ask Lab / has anyone tested this hypothesis / publish this hypothesis".
+- **`call-notes`** ⭐ — Turn meeting notes into canonical records: personal actions go to
+  the private note, shared project actions to Yonote, and approved research objects to Lab
+  Knowledge. It records stable links without task or hypothesis mirrors. *Fires on:* "write up this call / tasks from the call".
 - **`code-ingest`** ⭐ — One-time deep analysis of an external repo (GitHub URL or path)
   into a structured set of Obsidian Code-library notes mapping how it works (entrypoint,
   modules, where to change X) — citing `path:line`, never copying code. *Fires on:*
-  "разбери этот репозиторий / add this repo to the code library".
+  "add this repo to the code library".
 - **`code-library`** ⭐ — Reference for the whole code workflow: which coding skills/rules
   apply, how the Code library works, how a project hub card records its repo and edits,
   how experiments are monitored. *Fires on:* "how do we work with code here" / onboarding
@@ -135,6 +135,12 @@ The core research loop: get a paper into your library with a real, audited note.
   tasks, properties; also plugin/theme dev and debugging.
 - **`json-canvas`** ◇ — Create/edit JSON Canvas (`.canvas`): nodes, edges, groups —
   mind maps, flowcharts.
+- **`operon-obsidian-setup`** ⭐ — Reproduce the lab's Operon task-manager setup in a vault:
+  flat `project` tags (no `parentTask` hierarchy), a "my tasks" table dashboard, service-link
+  badges on project pages, emoji task icons, and day-boundary auto-archiving. Applies plugin
+  settings (`data.json`), templates, a CSS snippet, optional `main.js` display patches, and an
+  optional macOS launchd archiver — bundled scripts + assets do the work. *Fires on:* "set up
+  Operon / set up the Obsidian task system".
 
 ## F. Coding — development
 
@@ -226,5 +232,5 @@ uses them directly.
   of WebFetch to save tokens). *Fires on:* a URL to read/analyze.
 - **`google-workspace-mcp`** ⭐ — Read/edit Google Docs from Claude and fix the
   google-workspace MCP OAuth gotchas (Web vs Desktop client, restricted scope, browser
-  cache, Test users). *Fires on:* "переавторизуй google / google docs не работает / fix
+  cache, Test users). *Fires on:* "reauthorize google / google docs is broken / fix
   google mcp".
