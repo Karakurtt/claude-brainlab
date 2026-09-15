@@ -27,6 +27,10 @@ from typing import Dict
 PLACEHOLDER = re.compile(r"\$\{([A-Z_][A-Z0-9_]*)\}")
 
 EXPAND_ROOTS = ["skills", "commands", "agents", "hooks", "scripts", "rules"]
+# Top-level files in ~/.claude that also carry placeholders. CLAUDE.md is the
+# global instruction file every session reads, so an unexpanded
+# ${OBSIDIAN_VAULT} there sends every agent to a path that does not exist.
+EXPAND_FILES = ["CLAUDE.md", "CLAUDE.brainlab.md"]
 EXPAND_EXTS = {".md", ".py", ".sh", ".js", ".json", ".yaml", ".yml", ".txt"}
 EXPAND_KEYS = [
     "OBSIDIAN_VAULT", "VAULT_NAME", "UNPAYWALL_EMAIL", "USER_EMAIL",
@@ -47,23 +51,30 @@ def cmd_expand(args: argparse.Namespace) -> int:
         v = subs.get(m.group(1))
         return v if v else m.group(0)
 
+    def targets():
+        for root in EXPAND_ROOTS:
+            base = home / root
+            if not base.exists():
+                continue
+            for p in base.rglob("*"):
+                if p.is_file() and p.suffix in EXPAND_EXTS:
+                    yield p
+        for name in EXPAND_FILES:
+            p = home / name
+            if p.is_file():
+                yield p
+
     n_files = n_subs = 0
-    for root in EXPAND_ROOTS:
-        base = home / root
-        if not base.exists():
+    for p in targets():
+        try:
+            text = p.read_text(encoding="utf-8")
+        except (UnicodeDecodeError, OSError):
             continue
-        for p in base.rglob("*"):
-            if not p.is_file() or p.suffix not in EXPAND_EXTS:
-                continue
-            try:
-                text = p.read_text(encoding="utf-8")
-            except (UnicodeDecodeError, OSError):
-                continue
-            new, k = PLACEHOLDER.subn(rep, text)
-            if k:
-                p.write_text(new, encoding="utf-8")
-                n_files += 1
-                n_subs += k
+        new, k = PLACEHOLDER.subn(rep, text)
+        if k:
+            p.write_text(new, encoding="utf-8")
+            n_files += 1
+            n_subs += k
     print(f"  expanded placeholders: {n_files} files, {n_subs} substitutions")
     return 0
 
