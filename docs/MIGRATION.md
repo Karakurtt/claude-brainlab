@@ -212,6 +212,69 @@ Zotero semantic search starts empty; rebuild the index once:
 & "$HOME\.local\bin\zotero-mcp.exe" update-db
 ```
 
+### MemPalace: one writer at a time
+
+**Root cause, found 2026-09-15: several MemPalace MCP servers were running at
+once**, one per Claude Code session, all writing the same Chroma directory:
+
+```
+ProcessId  Started              Cmd
+    32772  15.09.2026 12:05:50  mempalace-mcp.exe
+    27388  15.09.2026 12:40:29  mempalace-mcp.exe     <- second session
+```
+
+Chroma's HNSW index is not safe for concurrent writers across processes, so
+every few writes a compaction loses the segment. That is the mechanism behind
+all the `*.corrupt-<timestamp>/` directories in `palace/` (2026-07-17,
+2026-08-27, and twice on 2026-09-15). It is not a one-off to repair and forget:
+it recurs as long as two sessions are open.
+
+Mitigation, in order of preference:
+
+1. Keep **one** Claude Code session with MemPalace active at a time. This is the
+   only thing that removes the cause.
+2. `mempalace daemon start` gives a single shared writer instead of one server
+   per session (it was not running on the old laptop -- worth setting up on the
+   new one).
+3. Repair when it happens (below).
+
+Note the failure mode is confusing in a specific way: **a write that reports
+`Error in compaction: Failed to apply logs to the hnsw segment writer` has
+usually still succeeded.** The row commits to SQLite and the drawer is
+searchable; only the index flush failed. Check with a search before re-filing
+anything, or you will store it twice.
+
+### Checking index health
+
+Corruption fails **quietly**: the drawers are all still there in SQLite and
+`mempalace_status` reports a healthy count, but the vector index is left
+holding a handful of elements and semantic search silently degrades to BM25
+keyword matching. The giveaway is in a search result:
+
+```
+"fallback": "bm25_only_via_sqlite",
+"vector_disabled_reason": "HNSW index holds 4 elements but sqlite has 1,886 embeddings ..."
+```
+
+A healthy result instead carries real `similarity` / `distance` numbers and
+`"matched_via": "drawer"`.
+
+Fix — note it takes a lock, so **no Claude Code session may be running** (its
+MCP server holds the palace):
+
+```powershell
+Get-Process mempalace-mcp -ErrorAction SilentlyContinue | Stop-Process -Force
+& "$HOME\.local\bin\mempalace.exe" repair --yes
+```
+
+It extracts every drawer, backs the palace up to `~/.mempalace/palace.backup`,
+rebuilds the collection and the FTS5 index, then VACUUMs. Quarantined bad
+segments accumulate as `palace/*.corrupt-<timestamp>/` directories; they are a
+few hundred KB in total and safe to carry or delete.
+
+Worth running once on the old laptop before copying, so the new machine starts
+from a healthy palace.
+
 ---
 
 ## 5. Audit the harness before reinstalling
